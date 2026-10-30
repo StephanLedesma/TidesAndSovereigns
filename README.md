@@ -56,3 +56,6 @@ AI and NPC deck generation are in `src/game/ai.ts`.
 - Commander's Horn occupies a dedicated slot on one chosen row and doubles the final Strength of every non-Legendary unit in that row. One Horn maximum per row.
 - Strength resolution is now: printed Strength → Weather base setter → Bond → Morale → Commander's Horn ×2.
 - Horns remain in their row slot until the round ends, then go to their owner's discard pile.
+
+### v0.11 visibility + Spy discard rules
+Battlefield unit cards now render as a larger cropped viewport of the original card image, keeping the name/art/stat area visible while hiding the lower rules panel. The full card remains available by clicking it. Spy cards that end up on an opponent's battlefield enter that opponent's discard pile when removed, allowing that opponent's Medic to revive them.

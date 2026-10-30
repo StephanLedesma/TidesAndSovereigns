@@ -126,3 +126,40 @@
 .horn-slot .card.compact{width:56px;height:82px;box-shadow:0 3px 9px #000a}
 .horn-slot .card.compact:hover{transform:scale(1.22);z-index:12}
 @media(max-width:900px){.board-row{grid-template-columns:58px 54px 1fr 45px}.horn-slot{min-height:94px}.horn-slot .card.compact{width:44px;height:65px}.horn-slot:before{font-size:22px}}
+
+/* v0.11 — larger cards + battlefield crop viewport */
+/* Hands are intentionally generous now; the drawer can be collapsed whenever board space matters. */
+.app-shell.hand-is-open{padding-bottom:365px}
+.hand-area.open{min-height:342px}
+.hand{max-width:1560px;gap:14px;padding:10px 18px 22px}
+.hand .card{width:190px;height:274px}
+.hand .card:hover{transform:translateY(-8px) scale(1.025)}
+
+/* Battlefield cards show only the upper portion of the original PNG. Nothing is altered on disk. */
+.board-row{min-height:154px}
+.row-cards{gap:9px;padding:9px 12px;align-items:center}
+.card.board-crop{width:126px;height:132px;border-radius:9px;overflow:hidden;box-shadow:0 6px 16px #000a;background:#160d09}
+.card.board-crop img{width:100%;height:auto;min-height:0;object-fit:initial;object-position:top center;display:block}
+.card.board-crop:hover{transform:translateY(-4px) scale(1.09);z-index:14}
+.card.board-crop .fallback{justify-content:flex-start;gap:8px}
+.card.board-crop .fallback b{font-size:24px}
+.card.board-crop .power-chip{left:6px;bottom:6px;width:32px;height:32px;font-size:15px;box-shadow:0 2px 8px #0008}
+
+/* Sharpshooter remains corrected when rendered through the cropped battlefield viewport. */
+.card-fractilian-sharpshooter.board-crop img{transform:rotate(-90deg) scale(1.6);transform-origin:center center;object-fit:contain;height:100%;width:100%}
+.card-fractilian-sharpshooter.board-crop:hover img{transform:rotate(-90deg) scale(1.6)}
+
+@media(max-width:1100px){
+  .app-shell.hand-is-open{padding-bottom:325px}
+  .hand-area.open{min-height:300px}
+  .hand .card{width:168px;height:242px}
+  .card.board-crop{width:112px;height:118px}
+  .board-row{min-height:140px}
+}
+@media(max-width:700px){
+  .app-shell.hand-is-open{padding-bottom:285px}
+  .hand-area.open{min-height:260px}
+  .hand .card{width:146px;height:210px}
+  .card.board-crop{width:96px;height:102px}
+  .board-row{min-height:124px}
+}

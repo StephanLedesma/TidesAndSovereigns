@@ -5,7 +5,7 @@ export const FRACTILIAN_CARDS: CardDefinition[] = [
   { id:'poor-fucking-pirates', name:'Poor Fucking Pirates', strength:1, rows:['melee'], ability:'bond', copies:3, image:'/cards/fractilian/poor-fucking-pirates.png', abilityTitle:'Bond', abilityText:'Strength doubles if there is another copy of this card in the same row.' },
   { id:'deck-duelist', name:'Deck Duelist', strength:5, rows:['melee','ranged'], ability:'none', copies:2, image:'/cards/fractilian/deck-duelist.png' },
   { id:'blackwake-bosun', name:'Blackwake Bosun', strength:4, rows:['melee'], ability:'summon_blackwake', copies:1, image:'/cards/fractilian/blackwake-bosun.png', abilityTitle:'Summon', abilityText:'Play both Blackwake Deckhands from your hand or deck.' },
-  { id:'blackwake-deckhands', name:'Blackwake Deckhands', strength:3, rows:['melee'], ability:'none', copies:2, image:'/cards/fractilian/blackwake-deckhands.png' },
+  { id:'blackwake-deckhands', name:'Blackwake Deckhands', strength:2, rows:['melee'], ability:'none', copies:2, image:'/cards/fractilian/blackwake-deckhands.png' },
   { id:'tidecutters', name:'Tidecutters', strength:4, rows:['melee','ranged'], ability:'bond', copies:3, image:'/cards/fractilian/tidecutters.png', abilityTitle:'Bond', abilityText:'Strength doubles if there is another copy of this card in the same row.' },
   { id:'cutlass-corsair', name:'Cutlass Corsair', strength:4, rows:['melee','ranged'], ability:'none', copies:2, image:'/cards/fractilian/cutlass-corsair.png' },
   { id:'blackpowder-raider', name:'Blackpowder Raider', strength:5, rows:['ranged'], ability:'none', copies:2, image:'/cards/fractilian/blackpowder-raider.png' },

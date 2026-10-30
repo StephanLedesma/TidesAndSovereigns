@@ -115,6 +115,13 @@ function summonAll(state:GameState,p:0|1,id:string,row:Row,exceptUid?:string){
   while(true){ const c=pullByDefinition(state,p,id); if(!c) break; if(c.uid!==exceptUid) putOnRow(state,p,row,c) }
 }
 function discardSpecial(state:GameState, player:0|1, card:CardInstance){ state.players[player].discard.push(card) }
+function discardBoardUnit(state:GameState, boardSide:0|1, card:CardInstance){
+  // Spy cards belong to the discard pile of the side they were physically on when removed.
+  // This lets that side's Medic revive a Spy that was played against them. Other units
+  // retain their original owner for discard routing, including units moved by bespoke effects.
+  const discardSide:0|1 = def(card).ability==='spy' ? boardSide : card.owner
+  state.players[discardSide].discard.push(card)
+}
 
 export function decoyCandidates(state:GameState, player:0|1=state.activePlayer){
   const out:{row:Row;card:CardInstance}[]=[]
@@ -137,7 +144,7 @@ function resolveScorch(state:GameState, player:0|1){
   const doomed=targets.filter(t=>t.power===max)
   for(const target of doomed){
     const removed=removeByUid(state.players[target.side].rows[target.row],target.card.uid)
-    if(removed) state.players[removed.owner].discard.push(removed)
+    if(removed) discardBoardUnit(state,target.side,removed)
   }
   state.message=`Scorch destroys ${doomed.length} unit${doomed.length===1?'':'s'} at ${max} strength.`
 }
@@ -224,7 +231,7 @@ export function playCard(input:GameState, player:0|1, uidToPlay:string, chosenRo
         for(const c of cards){
           // Sunder destroys units, not board-positioned Special cards such as Decoy.
           if(c.uid===card.uid || isSpecial(def(c))) survivors.push(c)
-          else state.players[c.owner].discard.push(c)
+          else discardBoardUnit(state,boardSide,c)
         }
         state.players[boardSide].rows[row].push(...survivors)
       }
@@ -263,10 +270,18 @@ export function resolveMedic(input:GameState, uidFromDiscard:string):GameState {
   const card=removeByUid(state.players[p].discard,uidFromDiscard)
   if(card && !def(card).unique && !isSpecial(def(card))){
     const d=def(card); const row=d.rows[0]
-    putOnRow(state,p,row,card)
-    if(d.ability==='summon_same') summonAll(state,p,d.id,row,card.uid)
-    if(d.ability==='summon_blackwake') for(const id of ['blackwake-deckhands','blackwake-deckhands']){ const c=pullByDefinition(state,p,id); if(c) putOnRow(state,p,'melee',c) }
-    if(d.ability==='summon_bowrig_crew') for(const id of ['jane-doe','bullrack','mickey']){ const c=pullByDefinition(state,p,id); if(c) putOnRow(state,p,'melee',c) }
+    if(d.ability==='spy') {
+      // A resurrected Spy resolves as though it were played: it goes to the opponent's
+      // battlefield and the Medic's controller draws two cards.
+      putOnRow(state,other(p),row,card)
+      draw(state,p,2)
+      state.message=`Medic revives ${d.name}: it spies for ${state.players[p].name}, who draws 2.`
+    } else {
+      putOnRow(state,p,row,card)
+      if(d.ability==='summon_same') summonAll(state,p,d.id,row,card.uid)
+      if(d.ability==='summon_blackwake') for(const id of ['blackwake-deckhands','blackwake-deckhands']){ const c=pullByDefinition(state,p,id); if(c) putOnRow(state,p,'melee',c) }
+      if(d.ability==='summon_bowrig_crew') for(const id of ['jane-doe','bullrack','mickey']){ const c=pullByDefinition(state,p,id); if(c) putOnRow(state,p,'melee',c) }
+    }
   }
   state.pendingMedic=null
   advanceTurnOrRound(state)
@@ -296,7 +311,7 @@ function finishRound(state:GameState){
   else { state.players[0].roundWins++; state.players[1].roundWins++ }
   for(const side of [0,1] as const) for(const row of ROWS){
     const cards=state.players[side].rows[row].splice(0)
-    for(const c of cards) state.players[c.owner].discard.push(c)
+    for(const c of cards) discardBoardUnit(state,side,c)
     const horn=state.players[side].horns[row]
     if(horn){ state.players[horn.owner].discard.push(horn); state.players[side].horns[row]=null }
   }

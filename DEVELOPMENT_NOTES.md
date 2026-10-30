@@ -54,3 +54,9 @@ A full Vite build was not available in this environment because npm dependencies
 - `special_clear_skies` clears `GameState.weather` only; it never removes Horns.
 - `special_horn` requires a row target and cannot be played into a row whose Horn slot is already occupied.
 - NPC random deck generation automatically includes both new Specials because they are non-Legendary Special cards.
+
+## v0.11
+- Spy discard routing now follows the battlefield side: a Spy left/destroyed on the opponent's board enters that opponent's discard pile, so their Medic can target it.
+- Medics can revive a Spy from their discard; the Spy resolves onto the enemy battlefield and draws 2 for the Medic's controller.
+- Hand cards are larger.
+- Battlefield unit cards use a larger cropped viewport showing the top/art/stat portion of the unchanged card PNG; clicking still opens the full card.
