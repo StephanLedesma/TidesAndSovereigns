@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { RotateCcw, Flag, Layers3, Skull, Eye, X } from 'lucide-react'
+import { RotateCcw, Flag, Layers3, Skull, Eye, X, Coins } from 'lucide-react'
 import { CARD_MAP } from './data/fractilian'
-import { completeMulligan, createGame, medicCandidates, passTurn, playCard, playerScore, resolveMedic } from './game/engine'
+import { completeMulligan, confirmCoinFlip, createGame, flipCoin, medicCandidates, passTurn, playCard, playerScore, resolveMedic } from './game/engine'
 import type { CardInstance, Row } from './game/types'
 import { BoardRow } from './components/BoardRow'
 import { CardView } from './components/CardView'
@@ -34,7 +34,7 @@ export default function App(){
   },[inspected])
 
   const inspectedIsPlayable = inspected
-    ? state.mulliganPlayer===null && state.players[current].hand.some(card=>card.uid===inspected.uid) && !state.players[current].passed && state.winner===null
+    ? !state.coinFlipPending && state.mulliganPlayer===null && state.players[current].hand.some(card=>card.uid===inspected.uid) && !state.players[current].passed && state.winner===null
     : false
 
   const playInspected=(row:Row)=>{
@@ -73,17 +73,33 @@ export default function App(){
     </div>
 
     <section className="table">
-      <aside className="side-panel enemy-side"><Skull/><b>{state.players[enemy].name}</b><small>{state.players[enemy].hand.length} cards</small><small>{state.players[enemy].deck.length} deck</small><small>{state.players[enemy].discard.length} discard</small>{state.players[enemy].passed&&<em>PASSED</em>}</aside>
+      <aside className="side-panel enemy-side"><div className="board-total"><span>Total</span><strong>{playerScore(state,enemy)}</strong></div><Skull/><b>{state.players[enemy].name}</b><small>{state.players[enemy].hand.length} cards</small><small>{state.players[enemy].deck.length} deck</small><small>{state.players[enemy].discard.length} discard</small>{state.players[enemy].passed&&<em>PASSED</em>}</aside>
       <div className="battlefield opponent">{[...order].reverse().map(r=><BoardRow key={r} state={state} side={enemy} row={r} onInspect={setInspected}/>)}</div>
       <div className="divider"><span>ROUND {state.round}</span></div>
       <div className="battlefield player">{order.map(r=><BoardRow key={r} state={state} side={current} row={r} onInspect={setInspected}/>)}</div>
-      <aside className="side-panel player-side"><Layers3/><b>{state.players[current].name}</b><small>{state.players[current].deck.length} deck</small><small>{state.players[current].discard.length} discard</small><button className="pass" onClick={()=>{setState(s=>passTurn(s,current));setInspected(null)}} disabled={state.mulliganPlayer!==null||state.players[current].passed||state.winner!==null}><Flag size={16}/> Pass</button></aside>
+      <aside className="side-panel player-side"><div className="board-total"><span>Total</span><strong>{playerScore(state,current)}</strong></div><Layers3/><b>{state.players[current].name}</b><small>{state.players[current].deck.length} deck</small><small>{state.players[current].discard.length} discard</small><button className="pass" onClick={()=>{setState(s=>passTurn(s,current));setInspected(null)}} disabled={state.coinFlipPending||state.mulliganPlayer!==null||state.players[current].passed||state.winner!==null}><Flag size={16}/> Pass</button></aside>
     </section>
 
     <section className="hand-area">
       <div className="hand-heading"><b>{state.players[current].name}'s hand</b><span>{state.players[current].hand.length} cards</span></div>
       <div className="hand">{state.players[current].hand.map(c=><CardView key={c.uid} card={c} onClick={()=>setInspected(c)}/>)}</div>
     </section>
+
+    {state.coinFlipPending && <div className="coin-backdrop">
+      <div className="coin-modal">
+        <Coins className="coin-icon" size={54}/>
+        <span className="mulligan-kicker">Opening toss</span>
+        <h2>Who plays first?</h2>
+        {state.coinFlipWinner===null ? <>
+          <p>Player 1 takes Heads. Player 2 takes Tails.</p>
+          <button className="coin-button" onClick={()=>setState(s=>flipCoin(s))}>Flip coin</button>
+        </> : <>
+          <div className="coin-result">{state.players[state.coinFlipWinner].name} wins the toss</div>
+          <p><b>{state.players[state.coinFlipWinner].name}</b> will take the first turn after both opening hands are settled.</p>
+          <button className="coin-button" onClick={()=>setState(s=>confirmCoinFlip(s))}>Continue to redraw</button>
+        </>}
+      </div>
+    </div>}
 
     {mulliganPlayer!==null && <div className="mulligan-backdrop">
       <div className="mulligan-modal">
@@ -126,6 +142,6 @@ export default function App(){
 
     {state.winner!==null && <div className="modal-backdrop"><div className="modal winner"><h2>{state.players[state.winner].name} wins!</h2><p>The tavern owes you a drink.</p><button onClick={()=>setState(createGame())}>Play again</button></div></div>}
 
-    {showRules && <div className="modal-backdrop" onClick={()=>setShowRules(false)}><div className="modal rules" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>setShowRules(false)}><X/></button><h2>Prototype rules</h2><ul><li>Each player begins with 10 cards and may redraw up to 2 before round one begins.</li><li>Highest total power wins a round; first to 2 rounds wins.</li><li>Play one card per turn or pass. Once you pass, you take no more turns that round.</li><li>Spy cards are placed on the opponent's row and draw 2 cards for their owner.</li><li>Bond doubles a card when another copy is in the same row. Morale gives every other non-legendary card in that row +1.</li><li>Fog affects Ranged, Rain affects Siege, Frost affects Melee. Weather reduces non-legendary units in that row to 1.</li><li>Legendary black cards ignore weather and morale. Dreadfist's Sunder explicitly destroys them anyway.</li></ul><p className="note">All card definitions live in <code>src/data/fractilian.ts</code>, so balance changes are easy.</p></div></div>}
+    {showRules && <div className="modal-backdrop" onClick={()=>setShowRules(false)}><div className="modal rules" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>setShowRules(false)}><X/></button><h2>Prototype rules</h2><ul><li>A coin toss determines who takes the first turn. The toss winner also resolves their opening redraw first.</li><li>Each player begins with 10 cards and may redraw up to 2 before round one begins.</li><li>Highest total power wins a round; first to 2 rounds wins.</li><li>Play one card per turn or pass. Once you pass, you take no more turns that round.</li><li>Spy cards are placed on the opponent's row and draw 2 cards for their owner.</li><li><b>Strength precedence:</b> printed strength → Weather sets base strength → Bond multiplies that base → Morale adds afterward.</li><li>Fog affects Ranged, Rain affects Siege, Frost affects Melee. Weather sets the base strength of affected non-legendary units to 1; it does not erase later buffs.</li><li>Example: a normal unit under Frost has base 1. Three Cabin Boys give that unit +3 Morale, so it finishes at 4 strength. Each Cabin Boy is 3 because it only receives the other two boosts.</li><li>Legendary black cards ignore ordinary Weather and Morale. Specific card text beats general rules: Dreadfist's Sunder destroys Legendary units and leaves Dreadfist himself standing.</li></ul><p className="note">All card definitions live in <code>src/data/fractilian.ts</code>, so balance changes are easy.</p></div></div>}
   </main>
 }

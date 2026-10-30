@@ -1,34 +1,39 @@
-# Development Notes
+# Pirates vs Titans — Development Notes (v0.5)
 
-## Current scope
+## New in v0.5
 
-This is a deliberately small **local hotseat MVP**. The goal is to prove the Pirates vs Titans rules and make balance changes cheap before adding networking.
+- Opening coin toss now determines the first player.
+- Coin-toss winner resolves their opening mulligan first, then takes the first turn.
+- Large total-power displays now sit to the left of both battlefields.
+- Dreadfist survives his own **Sunder** effect while every other unit is destroyed, including Legendary units.
+- Strength calculation now uses explicit precedence layers instead of Weather overwriting the final value.
 
-## Known assumptions reconstructed from the design session
+## Strength precedence
 
-The following values were reconstructed from the card-building conversation and are intentionally easy to change in `src/data/fractilian.ts`:
+Normal card strength resolves in this order:
 
-- Blackwake Deckhands: 3 strength, Melee, 2 copies.
-- Deck Duelist: 2 copies in the prototype deck.
-- Several generic units use 2 copies to make the test deck large enough for repeated matches.
-- Weather created by Cassiopeia / Orrick / Yara affects **only the opponent's corresponding row**, matching the wording used during design rather than original Gwent's global weather.
-- Legendary/unique cards ignore weather and morale bonuses. Dreadfist's Sunder is the explicit exception and destroys everything.
-- Medic currently replays a flexible card into its first listed row. A later UI pass can allow the resurrected flexible card to choose its row.
+1. **Printed strength** — the number printed on the card.
+2. **Base setters** — Weather sets the affected non-Legendary unit's base strength to 1.
+3. **Base multipliers** — Bond multiplies that current base strength.
+4. **Additive modifiers** — Morale Boost is added after Weather/Bond.
 
-## Missing final PNGs
+Example: a 6-strength unit under Frost has base 1. Three Cabin Boys in that row provide +3 Morale, so the unit's final strength is **4**.
 
-The runtime has a built-in fallback card, but these two final art files were not recoverable as distinct assets from the earlier image session:
+Each Cabin Boy only buffs **other** units, so three Cabin Boys under Weather are each strength **3**: base 1 + the other two Cabin Boys.
 
-- `public/cards/fractilian/blackwake-deckhands.png`
-- `public/cards/fractilian/fractilian-sharpshooter.png`
+## Superseding rules
 
-Drop the final 1024x1536 PNGs at those exact paths and they will appear automatically; no code change is needed.
+- Specific card text supersedes general rules.
+- Legendary black cards currently retain Gwent-style protection from ordinary Weather and Morale effects.
+- Dreadfist's Sunder explicitly says it destroys Legendary units, so it supersedes Legendary protection.
+- Dreadfist is excluded from his own destruction effect and remains on the battlefield at 0 strength.
 
-## Recommended next steps
+## Core balance data
 
-1. Play several local matches and tune strengths/copy counts.
-2. Add deck-building / minimum deck-size rules.
-3. Add Eternal leader cards and leader powers once those are finalized.
-4. Add Abyssal, Ferren, and Veyra card definition files.
-5. Add Supabase room-state synchronization for online multiplayer.
-6. Add animations, sounds, card zoom, and weather VFX after the rules are stable.
+Card stats and ability metadata remain in:
+
+`src/data/fractilian.ts`
+
+Strength calculations and ability resolution are in:
+
+`src/game/engine.ts`

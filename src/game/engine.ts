@@ -23,13 +23,45 @@ function player(name:string, owner:0|1): PlayerState {
 }
 
 export function createGame(): GameState {
-  return { players:[player('Player 1',0),player('Player 2',1)], activePlayer:0, round:1, weather:[{melee:null,ranged:null,siege:null},{melee:null,ranged:null,siege:null}], message:'Player 1: choose up to 2 cards to redraw.', winner:null, pendingMedic:null, mulliganPlayer:0 }
+  return {
+    players:[player('Player 1',0),player('Player 2',1)],
+    activePlayer:0,
+    startingPlayer:null,
+    coinFlipPending:true,
+    coinFlipWinner:null,
+    round:1,
+    weather:[{melee:null,ranged:null,siege:null},{melee:null,ranged:null,siege:null}],
+    message:'Flip the coin to determine who plays first.',
+    winner:null,
+    pendingMedic:null,
+    mulliganPlayer:null
+  }
 }
 
+export function flipCoin(input:GameState):GameState {
+  const state=structuredClone(input) as GameState
+  if(!state.coinFlipPending || state.coinFlipWinner!==null || state.winner!==null) return state
+  const winner:(0|1)=Math.random()<0.5?0:1
+  state.coinFlipWinner=winner
+  state.startingPlayer=winner
+  state.activePlayer=winner
+  state.message=`${state.players[winner].name} wins the coin toss and will play first.`
+  return state
+}
+
+export function confirmCoinFlip(input:GameState):GameState {
+  const state=structuredClone(input) as GameState
+  if(!state.coinFlipPending || state.coinFlipWinner===null || state.winner!==null) return state
+  state.coinFlipPending=false
+  state.mulliganPlayer=state.coinFlipWinner
+  state.activePlayer=state.coinFlipWinner
+  state.message=`${state.players[state.coinFlipWinner].name}: choose up to 2 cards to redraw.`
+  return state
+}
 
 export function completeMulligan(input:GameState, player:0|1, selectedUids:string[]):GameState {
   const state=structuredClone(input) as GameState
-  if(state.mulliganPlayer!==player || state.winner!==null) return state
+  if(state.coinFlipPending || state.mulliganPlayer!==player || state.winner!==null || state.startingPlayer===null) return state
 
   const chosen=[...new Set(selectedUids)].slice(0,2)
   const returned:CardInstance[]=[]
@@ -38,18 +70,19 @@ export function completeMulligan(input:GameState, player:0|1, selectedUids:strin
     if(card) returned.push(card)
   }
 
-  // Draw replacements before returning the rejected cards to the deck, so a
-  // player can never immediately redraw the exact card they just mulliganed.
+  // Draw replacements before returning rejected cards, so the exact card cannot
+  // immediately be redrawn during the same mulligan.
   draw(state,player,returned.length)
   state.players[player].deck=shuffle([...state.players[player].deck,...returned])
 
-  if(player===0){
-    state.mulliganPlayer=1
-    state.message='Player 2: choose up to 2 cards to redraw.'
+  if(player===state.startingPlayer){
+    const next=other(player)
+    state.mulliganPlayer=next
+    state.message=`${state.players[next].name}: choose up to 2 cards to redraw.`
   } else {
     state.mulliganPlayer=null
-    state.activePlayer=0
-    state.message='Player 1 to play.'
+    state.activePlayer=state.startingPlayer
+    state.message=`${state.players[state.activePlayer].name} to play.`
   }
   return state
 }
@@ -82,7 +115,7 @@ function summonAll(state:GameState,p:0|1,id:string,row:Row,exceptUid?:string){
 
 export function playCard(input:GameState, player:0|1, uidToPlay:string, chosenRow:Row):GameState {
   const state=structuredClone(input) as GameState
-  if(state.mulliganPlayer!==null || state.winner!==null || state.activePlayer!==player || state.players[player].passed) return state
+  if(state.coinFlipPending || state.mulliganPlayer!==null || state.winner!==null || state.activePlayer!==player || state.players[player].passed) return state
   const card=removeByUid(state.players[player].hand,uidToPlay); if(!card) return state
   const cardDef=def(card)
   if(!cardDef.rows.includes(chosenRow)){ state.players[player].hand.push(card); return state }
@@ -96,7 +129,7 @@ export function playCard(input:GameState, player:0|1, uidToPlay:string, chosenRo
     case 'summon_blackwake': for(const id of ['blackwake-deckhands','blackwake-deckhands']){ const c=pullByDefinition(state,player,id); if(c) putOnRow(state,player,'melee',c) } state.message='The Blackwake Deckhands answer the Bosun.'; break
     case 'summon_bowrig_crew': for(const id of ['jane-doe','bullrack','mickey']){ const c=pullByDefinition(state,player,id); if(c) putOnRow(state,player,'melee',c) } state.message='Bowrig summons her crew.'; break
     case 'brothers_in_arms': {
-      const found=locateOnBoard(state,c=>c.definitionId==='tobias-fate' && c.owner===enemy)
+      const found=locateOnBoard(state,c=>c.definitionId==='tobias-fate' && c.owner===player)
       if(found && found.side===enemy){ const [tf]=state.players[found.side].rows[found.row].splice(found.idx,1); putOnRow(state,player,'ranged',tf); state.message='Brothers in Arms: Tobias Fate changes sides.' }
       break
     }
@@ -109,11 +142,18 @@ export function playCard(input:GameState, player:0|1, uidToPlay:string, chosenRo
       break
     }
     case 'sunder': {
-      for(const side of [0,1] as const) for(const row of ROWS){
-        const cards=state.players[side].rows[row].splice(0)
-        for(const c of cards) state.players[c.owner].discard.push(c)
+      // Sunder destroys every OTHER unit, including Legendary cards. Dreadfist
+      // remains on the battlefield as the sole survivor of his own effect.
+      for(const boardSide of [0,1] as const) for(const row of ROWS){
+        const survivors:CardInstance[]=[]
+        const cards=state.players[boardSide].rows[row].splice(0)
+        for(const c of cards){
+          if(c.uid===card.uid) survivors.push(c)
+          else state.players[c.owner].discard.push(c)
+        }
+        state.players[boardSide].rows[row].push(...survivors)
       }
-      state.message='SUNDER: Dreadfist destroys the entire battlefield.'
+      state.message='SUNDER: Dreadfist destroys every other unit and remains standing.'
       break
     }
   }
@@ -141,7 +181,7 @@ export function resolveMedic(input:GameState, uidFromDiscard:string):GameState {
 
 export function passTurn(input:GameState, player:0|1):GameState {
   const state=structuredClone(input) as GameState
-  if(state.mulliganPlayer!==null || state.activePlayer!==player || state.winner!==null) return state
+  if(state.coinFlipPending || state.mulliganPlayer!==null || state.activePlayer!==player || state.winner!==null) return state
   state.players[player].passed=true
   state.message=`${state.players[player].name} passes.`
   advanceTurnOrRound(state)
@@ -173,16 +213,33 @@ function finishRound(state:GameState){
   state.message=`Round ${state.round}. ${state.players[state.activePlayer].name} to play.`
 }
 
+/**
+ * Strength precedence (lowest layer first):
+ * 1. Printed strength.
+ * 2. Base setters such as Weather (affected non-Legendary base becomes 1).
+ * 3. Base multipliers such as Bond.
+ * 4. Additive buffs such as Morale Boost.
+ *
+ * Legendary cards ignore ordinary Weather and Morale effects. Explicit card text
+ * can supersede that protection (for example Dreadfist's Sunder).
+ */
 export function cardPower(state:GameState, side:0|1, row:Row, card:CardInstance):number {
   const d=def(card)
+
+  // Gwent-style Legendary protection: ordinary row modifiers do not alter them.
   if(d.unique) return d.strength
-  if(state.weather[side][row]) return 1
-  let power=d.strength
-  if(d.ability==='bond' && state.players[side].rows[row].some(c=>c.uid!==card.uid && c.definitionId===card.definitionId)) power*=2
+
+  // Weather changes BASE strength rather than replacing the final score.
+  let base = state.weather[side][row] ? 1 : d.strength
+
+  // Bond multiplies the current base, including a weather-reduced base.
+  if(d.ability==='bond' && state.players[side].rows[row].some(c=>c.uid!==card.uid && c.definitionId===card.definitionId)) base*=2
+
+  // Morale is additive and therefore still works after Weather/Bond.
   const moraleCount=state.players[side].rows[row].filter(c=>c.uid!==card.uid && def(c).ability==='morale').length
-  power += moraleCount
-  return power
+  return base + moraleCount
 }
+
 export function rowScore(state:GameState, side:0|1, row:Row){ return state.players[side].rows[row].reduce((n,c)=>n+cardPower(state,side,row,c),0) }
 export function playerScore(state:GameState, side:0|1){ return ROWS.reduce((n,r)=>n+rowScore(state,side,r),0) }
 export function medicCandidates(state:GameState){ if(!state.pendingMedic) return []; const p=state.pendingMedic.player; return state.players[p].discard.filter(c=>!def(c).unique) }

@@ -47,6 +47,9 @@ export interface PlayerState {
 export interface GameState {
   players: [PlayerState, PlayerState]
   activePlayer: 0 | 1
+  startingPlayer: 0 | 1 | null
+  coinFlipPending: boolean
+  coinFlipWinner: 0 | 1 | null
   round: number
   weather: [Record<Row, Weather | null>, Record<Row, Weather | null>]
   message: string

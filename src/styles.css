@@ -8,3 +8,21 @@
 .mulligan-hand{display:flex;gap:12px;overflow-x:auto;padding:18px 8px 24px;justify-content:center}.mulligan-hand .card{width:132px;height:190px}.mulligan-hand .card.selected{outline:4px solid #e3b45f;box-shadow:0 0 0 5px #35180f,0 16px 36px #000;transform:translateY(-10px) scale(1.03)}
 .mulligan-actions{display:flex;align-items:center;justify-content:space-between;gap:18px;padding-top:16px;border-top:1px solid #604029}.mulligan-actions small{color:#9f896d}.mulligan-actions button{border:1px solid #b17c43;background:#7b261e;color:#fff0d5;border-radius:9px;padding:11px 18px;font-weight:bold;cursor:pointer;min-width:130px}.mulligan-actions button:hover{background:#9a3428;transform:translateY(-1px)}
 @media(max-width:900px){.mulligan-hand{justify-content:flex-start}.mulligan-hand .card{width:112px;height:162px}.mulligan-modal{padding:16px}.mulligan-copy h2{font-size:24px}.mulligan-actions{align-items:stretch;flex-direction:column}.mulligan-actions button{width:100%}}
+
+/* v0.5: both player summaries sit to the left of their battlefield, with a prominent total. */
+.table{grid-template-columns:150px minmax(0,1fr)}
+.opponent{grid-column:2;grid-row:1}.player{grid-column:2;grid-row:3}
+.enemy-side{grid-column:1;grid-row:1}.player-side{grid-column:1;grid-row:3}
+.divider{grid-column:1/3}
+.board-total{width:92px;min-height:72px;border:1px solid #8a633d;border-radius:12px;background:radial-gradient(circle at 50% 35%,#4a2b19,#160d09 72%);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:inset 0 0 20px #0008,0 5px 14px #0007;margin-bottom:3px}
+.board-total span{text-transform:uppercase;letter-spacing:.16em;font-size:9px;color:#aa8a64}
+.board-total strong{font-size:34px;line-height:1;color:#f3d7a0;margin-top:3px}
+
+.coin-backdrop{position:fixed;inset:0;z-index:110;background:radial-gradient(circle at 50% 20%,#3d2718f3,#080504fb 72%);display:grid;place-items:center;padding:24px;backdrop-filter:blur(10px)}
+.coin-modal{width:min(520px,92vw);padding:34px 30px;border:1px solid #9b7144;border-radius:18px;background:linear-gradient(180deg,#23150f,#0e0906);box-shadow:0 30px 100px #000;text-align:center;color:#f3e4c8}
+.coin-icon{color:#d7ad67;filter:drop-shadow(0 5px 12px #000);margin-bottom:10px}
+.coin-modal h2{font-size:32px;margin:6px 0 10px}.coin-modal p{color:#c7ae8c;line-height:1.5;margin:8px auto 20px;max-width:420px}
+.coin-button{border:1px solid #bd874b;background:#77251d;color:#fff0d5;border-radius:10px;padding:12px 20px;font-weight:bold;cursor:pointer;min-width:180px;box-shadow:0 8px 24px #0008}.coin-button:hover{background:#963329;transform:translateY(-1px)}
+.coin-result{display:inline-block;margin:10px 0 4px;padding:10px 16px;border-radius:999px;border:1px solid #8e6b43;background:#130c08;color:#efc87f;font-size:18px;font-weight:bold}
+
+@media(max-width:900px){.table{grid-template-columns:78px minmax(0,1fr)}.divider{grid-column:1/3}.board-total{width:60px;min-height:58px}.board-total strong{font-size:26px}.side-panel{padding:5px}.coin-modal{padding:26px 18px}.coin-modal h2{font-size:26px}}
