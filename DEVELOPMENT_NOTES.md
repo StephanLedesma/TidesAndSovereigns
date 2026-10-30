@@ -55,8 +55,16 @@ A full Vite build was not available in this environment because npm dependencies
 - `special_horn` requires a row target and cannot be played into a row whose Horn slot is already occupied.
 - NPC random deck generation automatically includes both new Specials because they are non-Legendary Special cards.
 
-## v0.11
+## v0.12
 - Spy discard routing now follows the battlefield side: a Spy left/destroyed on the opponent's board enters that opponent's discard pile, so their Medic can target it.
 - Medics can revive a Spy from their discard; the Spy resolves onto the enemy battlefield and draws 2 for the Medic's controller.
 - Hand cards are larger.
 - Battlefield unit cards use a larger cropped viewport showing the top/art/stat portion of the unchanged card PNG; clicking still opens the full card.
+
+
+## v0.12 battlefield power overlay
+- Battlefield power now overlays the printed top-left strength medallion instead of appearing below the card.
+- Unchanged strength uses a parchment/white bubble.
+- Buffed strength is green.
+- Reduced strength is red.
+- Original card artwork remains untouched; the live bubble simply covers the printed value while the card is on the board.

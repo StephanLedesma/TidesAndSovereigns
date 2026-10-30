@@ -57,5 +57,13 @@ AI and NPC deck generation are in `src/game/ai.ts`.
 - Strength resolution is now: printed Strength → Weather base setter → Bond → Morale → Commander's Horn ×2.
 - Horns remain in their row slot until the round ends, then go to their owner's discard pile.
 
-### v0.11 visibility + Spy discard rules
+### v0.12 visibility + Spy discard rules
 Battlefield unit cards now render as a larger cropped viewport of the original card image, keeping the name/art/stat area visible while hiding the lower rules panel. The full card remains available by clicking it. Spy cards that end up on an opponent's battlefield enter that opponent's discard pile when removed, allowing that opponent's Medic to revive them.
+
+
+## v0.12 battlefield power overlay
+- Battlefield power now overlays the printed top-left strength medallion instead of appearing below the card.
+- Unchanged strength uses a parchment/white bubble.
+- Buffed strength is green.
+- Reduced strength is red.
+- Original card artwork remains untouched; the live bubble simply covers the printed value while the card is on the board.

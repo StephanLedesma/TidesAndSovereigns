@@ -163,3 +163,11 @@
   .card.board-crop{width:96px;height:102px}
   .board-row{min-height:124px}
 }
+
+/* v0.12: live battlefield strength overlays the printed top-left medallion. */
+.card.board-crop .power-chip{left:3px;top:16px;bottom:auto;width:32px;height:32px;font-size:15px;line-height:1;border:2px solid #6b4528;background:#f3ead5;color:#24150d;box-shadow:0 2px 8px #000a;z-index:4}
+.card.board-crop .power-chip.buffed{background:#bfe3aa;color:#17350f;border-color:#557d45;box-shadow:0 0 0 1px #dff2d2,0 2px 9px #000a}
+.card.board-crop .power-chip.reduced{background:#e2a08e;color:#4b0f0b;border-color:#8a3429;box-shadow:0 0 0 1px #f0c5b8,0 2px 9px #000a}
+.card.board-crop .power-chip.unchanged{background:#f3ead5;color:#24150d;border-color:#6b4528}
+@media(max-width:900px){.card.board-crop .power-chip{left:4px;top:22px;width:29px;height:29px;font-size:14px}}
+@media(max-width:620px){.card.board-crop .power-chip{left:3px;top:19px;width:26px;height:26px;font-size:13px}}
