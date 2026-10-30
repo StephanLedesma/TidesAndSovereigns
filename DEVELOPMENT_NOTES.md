@@ -1,39 +1,28 @@
-# Pirates vs Titans — Development Notes (v0.5)
+# Development Notes — v0.7
 
-## New in v0.5
+## Persistence
 
-- Opening coin toss now determines the first player.
-- Coin-toss winner resolves their opening mulligan first, then takes the first turn.
-- Large total-power displays now sit to the left of both battlefields.
-- Dreadfist survives his own **Sunder** effect while every other unit is destroyed, including Legendary units.
-- Strength calculation now uses explicit precedence layers instead of Weather overwriting the final value.
+Campaign data is stored in browser `localStorage` under:
 
-## Strength precedence
+`pirates-vs-titans-campaign-v1`
 
-Normal card strength resolves in this order:
+It stores:
+- shared campaign collection counts
+- Player 1's most recent deck
+- Player 2's most recent deck
 
-1. **Printed strength** — the number printed on the card.
-2. **Base setters** — Weather sets the affected non-Legendary unit's base strength to 1.
-3. **Base multipliers** — Bond multiplies that current base strength.
-4. **Additive modifiers** — Morale Boost is added after Weather/Bond.
+This survives refreshes and browser restarts on the same browser/profile. It is not cloud-synced.
 
-Example: a 6-strength unit under Frost has base 1. Three Cabin Boys in that row provide +3 Morale, so the unit's final strength is **4**.
+## Starting collection
 
-Each Cabin Boy only buffs **other** units, so three Cabin Boys under Weather are each strength **3**: base 1 + the other two Cabin Boys.
+`src/data/fractilian.ts` exports `STARTING_COLLECTION_IDS`.
 
-## Superseding rules
+All cards currently available to the party are in that explicit list. Future card definitions should normally be added to `ALL_CARDS` but omitted from `STARTING_COLLECTION_IDS`, which makes them locked by default.
 
-- Specific card text supersedes general rules.
-- Legendary black cards currently retain Gwent-style protection from ordinary Weather and Morale effects.
-- Dreadfist's Sunder explicitly says it destroys Legendary units, so it supersedes Legendary protection.
-- Dreadfist is excluded from his own destruction effect and remains on the battlefield at 0 strength.
+## Unlocking campaign cards
 
-## Core balance data
+The Campaign Collection modal deliberately lists only owned cards. This avoids exposing undiscovered card names/artwork. A new card is unlocked by entering its exact card name or card ID. Each unlock adds one owned copy up to that card's copy limit.
 
-Card stats and ability metadata remain in:
+## Mulligan scrolling
 
-`src/data/fractilian.ts`
-
-Strength calculations and ability resolution are in:
-
-`src/game/engine.ts`
+The mulligan modal is now a fixed-height flex column. The hand area owns horizontal/vertical overflow and always uses `justify-content:flex-start`, fixing the previous centered-flex overflow bug where the first/last cards could become unreachable.

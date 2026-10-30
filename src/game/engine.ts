@@ -1,5 +1,5 @@
-import { CARD_MAP, FRACTILIAN_CARDS } from '../data/fractilian'
-import type { CardInstance, GameState, PlayerState, Row } from './types'
+import { CARD_MAP, STARTER_DECK_IDS } from '../data/fractilian'
+import type { CardDefinition, CardInstance, GameState, PlayerState, Row } from './types'
 
 const ROWS: Row[] = ['melee','ranged','siege']
 const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -8,23 +8,34 @@ const shuffle = <T,>(items:T[]) => {
   for (let i=a.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] }
   return a
 }
+const defById=(id:string)=>CARD_MAP[id]
+const def=(c:CardInstance)=>CARD_MAP[c.definitionId]
+const isSpecial=(d:CardDefinition)=>d.kind==='special'
+const other=(p:0|1):0|1=>p===0?1:0
 
-export function buildDeck(owner:0|1): CardInstance[] {
-  const deck: CardInstance[] = []
-  for (const def of FRACTILIAN_CARDS) {
-    for (let i=0;i<(def.copies ?? 1);i++) deck.push({ uid:uid(), definitionId:def.id, owner })
+export function deckStats(deckIds:string[]){
+  let units=0, specials=0
+  for(const id of deckIds){
+    const d=defById(id)
+    if(!d) continue
+    if(isSpecial(d)) specials++
+    else units++
   }
-  return shuffle(deck)
+  return {units,specials,total:units+specials,valid:units>=22 && specials<=10}
 }
 
-function player(name:string, owner:0|1): PlayerState {
-  const deck=buildDeck(owner)
+export function buildDeck(owner:0|1, definitionIds:string[]=STARTER_DECK_IDS): CardInstance[] {
+  return shuffle(definitionIds.filter(id=>CARD_MAP[id]).map(definitionId=>({uid:uid(),definitionId,owner})))
+}
+
+function player(name:string, owner:0|1, deckIds:string[]): PlayerState {
+  const deck=buildDeck(owner,deckIds)
   return { name, deck:deck.slice(10), hand:deck.slice(0,10), discard:[], rows:{melee:[],ranged:[],siege:[]}, passed:false, roundWins:0 }
 }
 
-export function createGame(): GameState {
+export function createGame(deck0:string[]=STARTER_DECK_IDS, deck1:string[]=STARTER_DECK_IDS): GameState {
   return {
-    players:[player('Player 1',0),player('Player 2',1)],
+    players:[player('Player 1',0,deck0),player('Player 2',1,deck1)],
     activePlayer:0,
     startingPlayer:null,
     coinFlipPending:true,
@@ -34,6 +45,7 @@ export function createGame(): GameState {
     message:'Flip the coin to determine who plays first.',
     winner:null,
     pendingMedic:null,
+    pendingDecoy:null,
     mulliganPlayer:null
   }
 }
@@ -62,19 +74,11 @@ export function confirmCoinFlip(input:GameState):GameState {
 export function completeMulligan(input:GameState, player:0|1, selectedUids:string[]):GameState {
   const state=structuredClone(input) as GameState
   if(state.coinFlipPending || state.mulliganPlayer!==player || state.winner!==null || state.startingPlayer===null) return state
-
   const chosen=[...new Set(selectedUids)].slice(0,2)
   const returned:CardInstance[]=[]
-  for(const cardUid of chosen){
-    const card=removeByUid(state.players[player].hand,cardUid)
-    if(card) returned.push(card)
-  }
-
-  // Draw replacements before returning rejected cards, so the exact card cannot
-  // immediately be redrawn during the same mulligan.
+  for(const cardUid of chosen){ const card=removeByUid(state.players[player].hand,cardUid); if(card) returned.push(card) }
   draw(state,player,returned.length)
   state.players[player].deck=shuffle([...state.players[player].deck,...returned])
-
   if(player===state.startingPlayer){
     const next=other(player)
     state.mulliganPlayer=next
@@ -91,8 +95,6 @@ function draw(state:GameState, p:0|1, count:number) {
   const pl=state.players[p]
   for(let i=0;i<count;i++) { const card=pl.deck.shift(); if(card) pl.hand.push(card) }
 }
-function def(c:CardInstance){ return CARD_MAP[c.definitionId] }
-function other(p:0|1):0|1 { return p===0?1:0 }
 function removeByUid(list:CardInstance[], uid:string){ const i=list.findIndex(c=>c.uid===uid); return i>=0 ? list.splice(i,1)[0] : undefined }
 function putOnRow(state:GameState, side:0|1, row:Row, card:CardInstance){ state.players[side].rows[row].push(card) }
 function locateOnBoard(state:GameState, predicate:(c:CardInstance)=>boolean){
@@ -112,13 +114,73 @@ function pullByDefinition(state:GameState,p:0|1,id:string){
 function summonAll(state:GameState,p:0|1,id:string,row:Row,exceptUid?:string){
   while(true){ const c=pullByDefinition(state,p,id); if(!c) break; if(c.uid!==exceptUid) putOnRow(state,p,row,c) }
 }
+function discardSpecial(state:GameState, player:0|1, card:CardInstance){ state.players[player].discard.push(card) }
 
-export function playCard(input:GameState, player:0|1, uidToPlay:string, chosenRow:Row):GameState {
+export function decoyCandidates(state:GameState, player:0|1=state.activePlayer){
+  const out:{row:Row;card:CardInstance}[]=[]
+  for(const row of ROWS) for(const card of state.players[player].rows[row]){
+    const d=def(card)
+    if(!isSpecial(d) && !d.unique) out.push({row,card})
+  }
+  return out
+}
+
+function resolveScorch(state:GameState, player:0|1){
+  const targets:{side:0|1;row:Row;card:CardInstance;power:number}[]=[]
+  for(const side of [0,1] as const) for(const row of ROWS) for(const card of state.players[side].rows[row]){
+    const d=def(card)
+    if(isSpecial(d) || d.unique) continue
+    targets.push({side,row,card,power:cardPower(state,side,row,card)})
+  }
+  if(!targets.length){ state.message=`${state.players[player].name} plays Scorch, but there are no valid units.`; return }
+  const max=Math.max(...targets.map(t=>t.power))
+  const doomed=targets.filter(t=>t.power===max)
+  for(const target of doomed){
+    const removed=removeByUid(state.players[target.side].rows[target.row],target.card.uid)
+    if(removed) state.players[removed.owner].discard.push(removed)
+  }
+  state.message=`Scorch destroys ${doomed.length} unit${doomed.length===1?'':'s'} at ${max} strength.`
+}
+
+function playSpecial(state:GameState, player:0|1, card:CardInstance){
+  const d=def(card)
+  switch(d.ability){
+    case 'special_decoy': {
+      if(decoyCandidates(state,player).length===0){
+        state.players[player].hand.push(card)
+        state.message='Decoy needs a non-legendary unit on your battlefield.'
+        return false
+      }
+      state.pendingDecoy={player,card}
+      state.message='Decoy: choose one of your non-legendary units to return to your hand.'
+      return true
+    }
+    case 'special_frost':
+      state.weather[0].melee='frost'; state.weather[1].melee='frost'; discardSpecial(state,player,card); state.message='Biting Frost covers both Melee rows.'; return true
+    case 'special_fog':
+      state.weather[0].ranged='fog'; state.weather[1].ranged='fog'; discardSpecial(state,player,card); state.message='Impenetrable Fog covers both Ranged rows.'; return true
+    case 'special_rain':
+      state.weather[0].siege='rain'; state.weather[1].siege='rain'; discardSpecial(state,player,card); state.message='Torrential Rain covers both Siege rows.'; return true
+    case 'special_scorch':
+      discardSpecial(state,player,card); resolveScorch(state,player); return true
+    default:
+      state.players[player].hand.push(card); return false
+  }
+}
+
+export function playCard(input:GameState, player:0|1, uidToPlay:string, chosenRow?:Row):GameState {
   const state=structuredClone(input) as GameState
-  if(state.coinFlipPending || state.mulliganPlayer!==null || state.winner!==null || state.activePlayer!==player || state.players[player].passed) return state
+  if(state.coinFlipPending || state.mulliganPlayer!==null || state.winner!==null || state.activePlayer!==player || state.players[player].passed || state.pendingDecoy) return state
   const card=removeByUid(state.players[player].hand,uidToPlay); if(!card) return state
   const cardDef=def(card)
-  if(!cardDef.rows.includes(chosenRow)){ state.players[player].hand.push(card); return state }
+
+  if(isSpecial(cardDef)){
+    const accepted=playSpecial(state,player,card)
+    if(accepted && !state.pendingDecoy) advanceTurnOrRound(state)
+    return state
+  }
+
+  if(!chosenRow || !cardDef.rows.includes(chosenRow)){ state.players[player].hand.push(card); return state }
   const enemy=other(player)
   const side = cardDef.ability==='spy' ? enemy : player
   putOnRow(state,side,chosenRow,card)
@@ -133,22 +195,21 @@ export function playCard(input:GameState, player:0|1, uidToPlay:string, chosenRo
       if(found && found.side===enemy){ const [tf]=state.players[found.side].rows[found.row].splice(found.idx,1); putOnRow(state,player,'ranged',tf); state.message='Brothers in Arms: Tobias Fate changes sides.' }
       break
     }
-    case 'sirens_call': state.weather[enemy].ranged='fog'; state.message='Siren’s Call blankets the Ranged row in fog.'; break
-    case 'salt_of_the_earth': state.weather[enemy].siege='rain'; state.message='Salt of the Earth drenches the Siege row.'; break
-    case 'fire_and_blood': state.weather[enemy].melee='frost'; state.message='Fire & Blood freezes the Melee row.'; break
+    case 'sirens_call': state.weather[enemy].ranged='fog'; state.message='Siren’s Call blankets the enemy Ranged row in fog.'; break
+    case 'salt_of_the_earth': state.weather[enemy].siege='rain'; state.message='Salt of the Earth drenches the enemy Siege row.'; break
+    case 'fire_and_blood': state.weather[enemy].melee='frost'; state.message='Fire & Blood freezes the enemy Melee row.'; break
     case 'medic': {
-      const candidates=state.players[player].discard.filter(c=>!def(c).unique)
-      if(candidates.length) { state.pendingMedic={player,medicUid:card.uid}; state.message='Medic: choose a non-unique card from your discard pile.' }
+      const candidates=state.players[player].discard.filter(c=>!def(c).unique && !isSpecial(def(c)))
+      if(candidates.length) { state.pendingMedic={player,medicUid:card.uid}; state.message='Medic: choose a non-unique unit from your discard pile.' }
       break
     }
     case 'sunder': {
-      // Sunder destroys every OTHER unit, including Legendary cards. Dreadfist
-      // remains on the battlefield as the sole survivor of his own effect.
       for(const boardSide of [0,1] as const) for(const row of ROWS){
         const survivors:CardInstance[]=[]
         const cards=state.players[boardSide].rows[row].splice(0)
         for(const c of cards){
-          if(c.uid===card.uid) survivors.push(c)
+          // Sunder destroys units, not board-positioned Special cards such as Decoy.
+          if(c.uid===card.uid || isSpecial(def(c))) survivors.push(c)
           else state.players[c.owner].discard.push(c)
         }
         state.players[boardSide].rows[row].push(...survivors)
@@ -161,14 +222,33 @@ export function playCard(input:GameState, player:0|1, uidToPlay:string, chosenRo
   return state
 }
 
+export function resolveDecoy(input:GameState, targetUid:string):GameState {
+  const state=structuredClone(input) as GameState
+  if(!state.pendingDecoy) return state
+  const {player,card:decoy}=state.pendingDecoy
+  for(const row of ROWS){
+    const idx=state.players[player].rows[row].findIndex(c=>c.uid===targetUid)
+    if(idx<0) continue
+    const target=state.players[player].rows[row][idx]
+    const td=def(target)
+    if(td.unique || isSpecial(td)) return state
+    state.players[player].rows[row][idx]=decoy
+    state.players[player].hand.push(target)
+    state.pendingDecoy=null
+    state.message=`Decoy returns ${td.name} to ${state.players[player].name}'s hand.`
+    advanceTurnOrRound(state)
+    return state
+  }
+  return state
+}
+
 export function resolveMedic(input:GameState, uidFromDiscard:string):GameState {
   const state=structuredClone(input) as GameState
   if(!state.pendingMedic) return state
   const p=state.pendingMedic.player
   const card=removeByUid(state.players[p].discard,uidFromDiscard)
-  if(card && !def(card).unique){
+  if(card && !def(card).unique && !isSpecial(def(card))){
     const d=def(card); const row=d.rows[0]
-    // Medic replays the card, but avoids another medic-selection loop for simplicity.
     putOnRow(state,p,row,card)
     if(d.ability==='summon_same') summonAll(state,p,d.id,row,card.uid)
     if(d.ability==='summon_blackwake') for(const id of ['blackwake-deckhands','blackwake-deckhands']){ const c=pullByDefinition(state,p,id); if(c) putOnRow(state,p,'melee',c) }
@@ -181,7 +261,7 @@ export function resolveMedic(input:GameState, uidFromDiscard:string):GameState {
 
 export function passTurn(input:GameState, player:0|1):GameState {
   const state=structuredClone(input) as GameState
-  if(state.coinFlipPending || state.mulliganPlayer!==null || state.activePlayer!==player || state.winner!==null) return state
+  if(state.coinFlipPending || state.mulliganPlayer!==null || state.activePlayer!==player || state.winner!==null || state.pendingDecoy) return state
   state.players[player].passed=true
   state.message=`${state.players[player].name} passes.`
   advanceTurnOrRound(state)
@@ -214,32 +294,24 @@ function finishRound(state:GameState){
 }
 
 /**
- * Strength precedence (lowest layer first):
+ * Strength precedence:
  * 1. Printed strength.
  * 2. Base setters such as Weather (affected non-Legendary base becomes 1).
  * 3. Base multipliers such as Bond.
  * 4. Additive buffs such as Morale Boost.
- *
- * Legendary cards ignore ordinary Weather and Morale effects. Explicit card text
+ * Legendary units ignore ordinary Weather and Morale effects. Explicit card text
  * can supersede that protection (for example Dreadfist's Sunder).
  */
 export function cardPower(state:GameState, side:0|1, row:Row, card:CardInstance):number {
   const d=def(card)
-
-  // Gwent-style Legendary protection: ordinary row modifiers do not alter them.
+  if(isSpecial(d)) return 0
   if(d.unique) return d.strength
-
-  // Weather changes BASE strength rather than replacing the final score.
   let base = state.weather[side][row] ? 1 : d.strength
-
-  // Bond multiplies the current base, including a weather-reduced base.
   if(d.ability==='bond' && state.players[side].rows[row].some(c=>c.uid!==card.uid && c.definitionId===card.definitionId)) base*=2
-
-  // Morale is additive and therefore still works after Weather/Bond.
-  const moraleCount=state.players[side].rows[row].filter(c=>c.uid!==card.uid && def(c).ability==='morale').length
+  const moraleCount=state.players[side].rows[row].filter(c=>c.uid!==card.uid && !isSpecial(def(c)) && def(c).ability==='morale').length
   return base + moraleCount
 }
 
 export function rowScore(state:GameState, side:0|1, row:Row){ return state.players[side].rows[row].reduce((n,c)=>n+cardPower(state,side,row,c),0) }
 export function playerScore(state:GameState, side:0|1){ return ROWS.reduce((n,r)=>n+rowScore(state,side,r),0) }
-export function medicCandidates(state:GameState){ if(!state.pendingMedic) return []; const p=state.pendingMedic.player; return state.players[p].discard.filter(c=>!def(c).unique) }
+export function medicCandidates(state:GameState){ if(!state.pendingMedic) return []; const p=state.pendingMedic.player; return state.players[p].discard.filter(c=>!def(c).unique && !isSpecial(def(c))) }

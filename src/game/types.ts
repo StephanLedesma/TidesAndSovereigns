@@ -1,5 +1,6 @@
 export type Row = 'melee' | 'ranged' | 'siege'
 export type Weather = 'frost' | 'fog' | 'rain'
+export type CardKind = 'unit' | 'special'
 export type Ability =
   | 'none'
   | 'bond'
@@ -14,6 +15,11 @@ export type Ability =
   | 'sirens_call'
   | 'salt_of_the_earth'
   | 'fire_and_blood'
+  | 'special_decoy'
+  | 'special_frost'
+  | 'special_fog'
+  | 'special_rain'
+  | 'special_scorch'
 
 export interface CardDefinition {
   id: string
@@ -21,6 +27,7 @@ export interface CardDefinition {
   strength: number
   rows: Row[]
   ability: Ability
+  kind?: CardKind
   unique?: boolean
   image?: string
   copies?: number
@@ -55,5 +62,6 @@ export interface GameState {
   message: string
   winner: 0 | 1 | null
   pendingMedic: { player: 0 | 1; medicUid: string } | null
+  pendingDecoy: { player: 0 | 1; card: CardInstance } | null
   mulliganPlayer: 0 | 1 | null
 }

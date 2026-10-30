@@ -45,4 +45,41 @@ export const FRACTILIAN_CARDS: CardDefinition[] = [
   { id:'river-king', name:'The River King', strength:10, rows:['siege'], ability:'none', unique:true, copies:1, image:'/cards/fractilian/river-king.png' }
 ]
 
-export const CARD_MAP = Object.fromEntries(FRACTILIAN_CARDS.map(c => [c.id, c])) as Record<string, CardDefinition>
+export const SPECIAL_CARDS: CardDefinition[] = [
+  { id:'decoy', name:'Decoy', strength:0, rows:[], ability:'special_decoy', kind:'special', copies:3, image:'/cards/specials/decoy.png', abilityTitle:'Decoy', abilityText:'Swap this card with one non-legendary unit on your side of the battlefield, returning that unit to your hand.' },
+  { id:'biting-frost', name:'Biting Frost', strength:0, rows:[], ability:'special_frost', kind:'special', copies:3, image:'/cards/specials/frost.png', abilityTitle:'Biting Frost', abilityText:'Set the base Strength of all non-legendary Melee units on both sides to 1.' },
+  { id:'impenetrable-fog', name:'Impenetrable Fog', strength:0, rows:[], ability:'special_fog', kind:'special', copies:3, image:'/cards/specials/fog.png', abilityTitle:'Impenetrable Fog', abilityText:'Set the base Strength of all non-legendary Ranged units on both sides to 1.' },
+  { id:'torrential-rain', name:'Torrential Rain', strength:0, rows:[], ability:'special_rain', kind:'special', copies:3, image:'/cards/specials/rain.png', abilityTitle:'Torrential Rain', abilityText:'Set the base Strength of all non-legendary Siege units on both sides to 1.' },
+  { id:'scorch', name:'Scorch', strength:0, rows:[], ability:'special_scorch', kind:'special', copies:3, image:'/cards/specials/scorch.png', abilityTitle:'Scorch', abilityText:'Destroy the strongest non-legendary unit or units on the battlefield.' }
+]
+
+export const ALL_CARDS: CardDefinition[] = [...FRACTILIAN_CARDS, ...SPECIAL_CARDS]
+export const CARD_MAP = Object.fromEntries(ALL_CARDS.map(c => [c.id, c])) as Record<string, CardDefinition>
+
+// Cards the party owns at campaign start. Add future card definitions to ALL_CARDS,
+// but leave them out of this list so they remain undiscovered until unlocked in-game.
+export const STARTING_COLLECTION_IDS: string[] = [
+  'cabin-boys', 'poor-fucking-pirates', 'deck-duelist', 'blackwake-bosun',
+  'blackwake-deckhands', 'tidecutters', 'cutlass-corsair', 'blackpowder-raider',
+  'boarding-gunners', 'saltshot-veteran', 'corsair-pistolier', 'fractilian-sharpshooter',
+  'powder-hand', 'reefrunner', 'hess-bowrig', 'jane-doe',
+  'bullrack', 'mickey', 'tobias-fate', 'jasper',
+  'malcom-graves', 'dreadfist', 'cassiopeia', 'orrick-saltbane',
+  'yara-bloodfire', 'karthos-vale', 'cassandra', 'maelis-thorn',
+  'lysandra', 'wailing-hangman', 'eagle-of-the-sea', 'crimson-rush',
+  'salt-widow', 'black-gull', 'gallowswake', 'storms-folly',
+  'grinning-maiden', 'river-king', 'decoy', 'biting-frost',
+  'impenetrable-fog', 'torrential-rain', 'scorch',
+]
+
+export const STARTER_DECK_IDS: string[] = [
+  'poor-fucking-pirates','poor-fucking-pirates','poor-fucking-pirates',
+  'tidecutters','tidecutters','tidecutters',
+  'cabin-boys','cabin-boys','cabin-boys',
+  'boarding-gunners','boarding-gunners','boarding-gunners',
+  'blackwake-bosun','blackwake-deckhands','blackwake-deckhands',
+  'cutlass-corsair','tobias-fate','jasper','karthos-vale',
+  'wailing-hangman','eagle-of-the-sea','salt-widow',
+  'decoy','biting-frost','impenetrable-fog','torrential-rain','scorch'
+]
+
