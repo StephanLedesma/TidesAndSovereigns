@@ -33,9 +33,9 @@ function player(name:string, owner:0|1, deckIds:string[]): PlayerState {
   return { name, deck:deck.slice(10), hand:deck.slice(0,10), discard:[], rows:{melee:[],ranged:[],siege:[]}, passed:false, roundWins:0 }
 }
 
-export function createGame(deck0:string[]=STARTER_DECK_IDS, deck1:string[]=STARTER_DECK_IDS): GameState {
+export function createGame(deck0:string[]=STARTER_DECK_IDS, deck1:string[]=STARTER_DECK_IDS, names:[string,string]=['Player 1','Player 2']): GameState {
   return {
-    players:[player('Player 1',0,deck0),player('Player 2',1,deck1)],
+    players:[player(names[0],0,deck0),player(names[1],1,deck1)],
     activePlayer:0,
     startingPlayer:null,
     coinFlipPending:true,

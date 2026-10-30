@@ -1,28 +1,49 @@
-# Development Notes — v0.7
+# Development Notes — v0.9
 
-## Persistence
+## Campaign save schema
 
-Campaign data is stored in browser `localStorage` under:
+Local key: `pirates-vs-titans-campaign-v3`
 
-`pirates-vs-titans-campaign-v1`
+Portable JSON:
 
-It stores:
-- shared campaign collection counts
-- Player 1's most recent deck
-- Player 2's most recent deck
+```json
+{
+  "version": 3,
+  "collection": {},
+  "playerDeck": {},
+  "opponentMode": "computer"
+}
+```
 
-This survives refreshes and browser restarts on the same browser/profile. It is not cloud-synced.
+NPC Legendary access is intentionally omitted from the campaign save because it is a per-match DM option.
 
-## Starting collection
+## v0.8 collection migration
 
-`src/data/fractilian.ts` exports `STARTING_COLLECTION_IDS`.
+v0.8 accidentally initialized the shared campaign collection with every card at its maximum copy limit. The v0.9 loader detects that exact legacy state and replaces it with the exact starter-deck counts. A legacy collection that differs from the accidental full default is preserved, so deliberately edited/discovered progress is not blindly erased.
 
-All cards currently available to the party are in that explicit list. Future card definitions should normally be added to `ALL_CARDS` but omitted from `STARTING_COLLECTION_IDS`, which makes them locked by default.
+## NPC deck generation
 
-## Unlocking campaign cards
+`generateRandomNpcDeck(allowedLegendaryIds)` no longer takes the player collection.
 
-The Campaign Collection modal deliberately lists only owned cards. This avoids exposing undiscovered card names/artwork. A new card is unlocked by entering its exact card name or card ID. Each unlock adds one owned copy up to that card's copy limit.
+Pool rules:
 
-## Mulligan scrolling
+- every non-Legendary card in `ALL_CARDS` is available;
+- normal database copy limits still apply;
+- all Legendary cards are excluded by default;
+- selected Legendary IDs are added to the eligible pool for that match;
+- generated decks still require at least 22 Units and no more than 10 Specials.
 
-The mulligan modal is now a fixed-height flex column. The hand area owns horizontal/vertical overflow and always uses `justify-content:flex-start`, fixing the previous centered-flex overflow bug where the first/last cards could become unreachable.
+## Sharpshooter orientation
+
+`CardView` adds the card ID as a CSS class. `fractilian-sharpshooter` receives an isolated rotation rule, and the inspection modal receives the same correction. This avoids changing the source orientation or affecting other cards.
+
+The packaged source history did not contain the Sharpshooter PNG itself; the orientation fix applies to the existing `public/cards/fractilian/fractilian-sharpshooter.png` in the user's working project. If producing a clean project from scratch, add that asset at the same path.
+
+## Testing performed
+
+- `App.tsx`, `ai.ts`, and `CardView.tsx` syntax-transpile successfully with TypeScript 5.8.3.
+- 2,000 default NPC decks generated with **zero illegal decks** and **zero Legendary leaks**.
+- 1,000 NPC decks generated with Dreadfist/Cassandra allowed; only those selected Legendaries were eligible, with no other Legendary appearing.
+- Starter collection resolves to exactly 27 physical cards across 18 card types, including only one Cutlass Corsair and one copy of each starter Special.
+
+A full Vite build was not available in this environment because npm dependencies could not be downloaded during packaging; run `npm install` then `npm run dev` locally as usual.

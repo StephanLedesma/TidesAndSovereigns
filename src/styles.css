@@ -92,3 +92,26 @@
   .collection-message{grid-column:auto}
   .mulligan-modal{width:calc(100vw - 16px);max-height:calc(100dvh - 16px);padding:14px}
 }
+
+/* v0.8 — portable campaign saves, randomized NPC seat, computer opponent */
+.hidden-file-input{display:none}
+.builder-top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.save-message{margin:0 0 14px;padding:10px 14px;border:1px solid #6c4d33;border-radius:9px;background:#17100b;color:#e8c990;font-size:12px}
+.opponent-mode-panel{display:grid;grid-template-columns:minmax(260px,.8fr) minmax(420px,1.2fr);gap:24px;align-items:center;margin-bottom:18px;padding:18px;border:1px solid #735035;border-radius:12px;background:#130c09d9;box-shadow:0 12px 30px #0005}
+.opponent-mode-panel h2{margin:4px 0 6px;font-size:24px}.opponent-mode-panel p{margin:0;color:#ac9678;font-size:13px;line-height:1.45}
+.opponent-mode-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}.opponent-mode-buttons button{min-height:74px;border:1px solid #6d4a30;background:#22140f;color:#d9c4a5;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:11px;text-align:left;cursor:pointer}.opponent-mode-buttons button:hover{background:#321b13}.opponent-mode-buttons button.active{border-color:#bf8650;background:#6f251e;color:#fff1d9;box-shadow:inset 0 0 0 1px #b87642}.opponent-mode-buttons span{display:flex;flex-direction:column;gap:3px}.opponent-mode-buttons b{font-size:14px}.opponent-mode-buttons small{font-size:10px;color:#bda483}.opponent-mode-buttons button.active small{color:#e3c9a5}
+.single-deck-header{grid-template-columns:auto 1fr auto}.thinking-label{display:inline-flex;align-items:center;gap:5px;color:#e7bd75;font-weight:bold}.thinking-label svg{animation:thinkingPulse 1s ease-in-out infinite}@keyframes thinkingPulse{0%,100%{opacity:.45;transform:scale(.92)}50%{opacity:1;transform:scale(1.08)}}
+@media(max-width:1000px){.opponent-mode-panel{grid-template-columns:1fr}.single-deck-header{grid-template-columns:1fr}.builder-top-actions{justify-content:flex-start}}
+@media(max-width:620px){.opponent-mode-buttons{grid-template-columns:1fr}.opponent-mode-panel{padding:13px}}
+
+
+/* v0.9 — starter-only player collection + NPC card pool */
+.npc-legendary-panel{margin:0 0 20px;padding:16px;border:1px solid #65462f;border-radius:12px;background:#160e0bcc}
+.npc-legendary-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:12px}
+.npc-legendary-heading h2{margin:4px 0 5px;font-size:21px}.npc-legendary-heading p{margin:0;max-width:850px;color:#b7a080;font-size:12px;line-height:1.45}
+.npc-legendary-heading>button{border:1px solid #6a4931;background:#25150f;color:#d9c4a5;border-radius:8px;padding:8px 11px;cursor:pointer}.npc-legendary-heading>button:disabled{opacity:.35;cursor:not-allowed}
+.npc-legendary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:8px}.npc-legendary-grid button{display:flex;flex-direction:column;gap:2px;text-align:left;border:1px solid #4e3728;background:#100a08;color:#b9a184;border-radius:9px;padding:9px 10px;cursor:pointer}.npc-legendary-grid button:hover{border-color:#83603d}.npc-legendary-grid button.allowed{border-color:#c3914f;background:#342016;color:#f1dfc0;box-shadow:inset 0 0 0 1px #7d512d}.npc-legendary-grid button span{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#8e765c}.npc-legendary-grid button.allowed span{color:#efbd6f}.npc-legendary-grid button b{font-size:13px}.npc-legendary-grid button small{font-size:10px;color:#8f7b63}.npc-legendary-note{display:block;margin-top:10px;color:#8f7c65}
+/* The Sharpshooter source image in the campaign asset set is stored sideways. Correct only that card without affecting any other artwork. */
+.card-fractilian-sharpshooter img{transform:rotate(-90deg) scale(1.45);object-fit:contain;background:#130c09}.card-fractilian-sharpshooter:hover img{transform:rotate(-90deg) scale(1.45)}
+.card-inspect>img.sharpshooter-image-fix{transform:rotate(-90deg);max-width:min(50vh,560px);max-height:min(72vw,560px);margin:70px 85px}
+@media(max-width:800px){.npc-legendary-heading{flex-direction:column}.npc-legendary-grid{grid-template-columns:repeat(auto-fill,minmax(145px,1fr))}.card-inspect>img.sharpshooter-image-fix{margin:55px}}

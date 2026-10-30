@@ -1,6 +1,6 @@
-# Pirates vs Titans — v0.7
+# Pirates vs Titans — v0.9
 
-A local hotseat prototype inspired by The Witcher 3's original Gwent.
+A browser-based Witcher 3 Gwent-style minigame for the Boneyard campaign.
 
 ## Run locally
 
@@ -9,26 +9,42 @@ npm install
 npm run dev
 ```
 
-## v0.7 additions
+Open the Vite address, normally `http://localhost:5173`.
 
-- Fixed the opening mulligan hand so all cards can be reached by scrolling.
-- Added a shared campaign card collection.
-- The current Fractilian + Special pool is the starting collection.
-- Future cards can exist in the card database at 0 owned and remain hidden from players until discovered.
-- Both players can only build with copies the campaign currently owns.
-- Campaign collection and both players' latest deck choices auto-save in browser localStorage.
-- Added a Campaign Collection screen for correcting owned copy counts and unlocking a discovered card by exact card name or ID.
+## v0.9 changes
 
-## Campaign collection behavior
+- The party now begins with **exactly the cards in the starter deck** — not the entire Fractilian database.
+- Additional player cards must be unlocked through the Campaign Collection as they are discovered in the D&D world.
+- The old v0.8 "everything owned" default is automatically cleansed when detected.
+- NPC decks no longer depend on the party collection.
+- NPCs can use **every non-Legendary Unit and Special card** in the database, up to normal copy limits.
+- Legendary cards are excluded from NPC decks by default.
+- Match setup now has an **NPC Legendary Access** panel. Toggle only the Legendary cards this opponent is allowed to draw from.
+- Legendary access is match-only and resets when returning to the deck builder after a game.
+- The Fractilian Sharpshooter display receives a card-specific 90° orientation correction without rotating any other card.
 
-Starting ownership is defined by `STARTING_COLLECTION_IDS` in `src/data/fractilian.ts`.
+## Player collection vs NPC pool
 
-When adding a future card to the game database, add its card definition to `ALL_CARDS` but **do not** add its ID to `STARTING_COLLECTION_IDS`. It will start locked and will not appear in the normal deck builder. Once the party finds it in the D&D campaign, use **Campaign collection → Add discovered copy** and enter its exact name or ID.
+These are deliberately separate systems:
 
-The browser save key is `pirates-vs-titans-campaign-v1`.
+- **Player collection:** starts with the starter deck and grows through campaign discoveries.
+- **Player deck:** must use only owned copies from that collection.
+- **NPC pool:** all non-Legendary cards, regardless of what the party has found.
+- **NPC Legendary exceptions:** selected by the DM during match setup.
+
+The NPC still builds a fresh randomized legal deck every match and obeys the minimum 22 Units / maximum 10 Specials rules.
+
+## Persistence
+
+Player collection, player deck and preferred opponent mode auto-save in browser localStorage. **Export Campaign** creates a portable JSON backup. NPC Legendary access is intentionally not saved because it belongs to a specific opponent/match.
 
 ## Deck rules
 
 - Minimum 22 Unit cards.
 - Maximum 10 Special cards.
-- A deck cannot use more copies of a card than the campaign collection owns.
+- Player copy counts are limited by the campaign collection.
+- NPC copy counts use each card's database copy limit.
+- Specials: Decoy, Biting Frost, Impenetrable Fog, Torrential Rain and Scorch.
+
+Card definitions are in `src/data/fractilian.ts`.
+AI and NPC deck generation are in `src/game/ai.ts`.
