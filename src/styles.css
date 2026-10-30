@@ -115,3 +115,14 @@
 .card-fractilian-sharpshooter img{transform:rotate(-90deg) scale(1.45);object-fit:contain;background:#130c09}.card-fractilian-sharpshooter:hover img{transform:rotate(-90deg) scale(1.45)}
 .card-inspect>img.sharpshooter-image-fix{transform:rotate(-90deg);max-width:min(50vh,560px);max-height:min(72vw,560px);margin:70px 85px}
 @media(max-width:800px){.npc-legendary-heading{flex-direction:column}.npc-legendary-grid{grid-template-columns:repeat(auto-fill,minmax(145px,1fr))}.card-inspect>img.sharpshooter-image-fix{margin:55px}}
+
+/* v0.10 — Commander's Horn row slots */
+.board-row{grid-template-columns:86px 76px 1fr 64px}
+.horn-slot{height:100%;min-height:112px;border-right:1px solid #65472e;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;z-index:1;background:#170e0a66;color:#876e50;text-transform:uppercase;letter-spacing:.08em;font-size:9px;position:relative}
+.horn-slot:before{content:'◖';font-size:28px;line-height:1;color:#8d6843;transform:rotate(-18deg)}
+.horn-slot small{font-size:8px;letter-spacing:.12em;color:#6f5c47}
+.horn-slot.occupied{background:#2d1c10aa}
+.horn-slot.occupied:before,.horn-slot.occupied>span,.horn-slot.occupied>small{display:none}
+.horn-slot .card.compact{width:56px;height:82px;box-shadow:0 3px 9px #000a}
+.horn-slot .card.compact:hover{transform:scale(1.22);z-index:12}
+@media(max-width:900px){.board-row{grid-template-columns:58px 54px 1fr 45px}.horn-slot{min-height:94px}.horn-slot .card.compact{width:44px;height:65px}.horn-slot:before{font-size:22px}}

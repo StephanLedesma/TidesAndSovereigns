@@ -51,6 +51,8 @@ function cardKeepScore(def:CardDefinition){
   if(def.ability==='sunder') score+=4
   if(def.ability==='summon_same'||def.ability==='summon_blackwake'||def.ability==='summon_bowrig_crew') score+=2
   if(def.ability==='special_scorch') score+=3
+  if(def.ability==='special_horn') score+=3
+  if(def.ability==='special_clear_skies') score+=1
   return score+Math.random()*1.5
 }
 
@@ -101,7 +103,7 @@ function candidateActions(state:GameState){
   for(const card of state.players[1].hand){
     const d=CARD_MAP[card.definitionId]
     if(!d) continue
-    const rows:(Row|undefined)[]=d.kind==='special'?[undefined]:d.rows
+    const rows:(Row|undefined)[]=d.ability==='special_horn' ? ROWS.filter(row=>!state.players[1].horns[row]) : d.kind==='special'?[undefined]:d.rows
     for(const row of rows){
       let after=playCard(state,1,card.uid,row)
       // Illegal Decoy returns to hand and does not advance the turn.

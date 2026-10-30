@@ -20,6 +20,8 @@ export type Ability =
   | 'special_fog'
   | 'special_rain'
   | 'special_scorch'
+  | 'special_clear_skies'
+  | 'special_horn'
 
 export interface CardDefinition {
   id: string
@@ -47,6 +49,7 @@ export interface PlayerState {
   hand: CardInstance[]
   discard: CardInstance[]
   rows: Record<Row, CardInstance[]>
+  horns: Record<Row, CardInstance | null>
   passed: boolean
   roundWins: number
 }

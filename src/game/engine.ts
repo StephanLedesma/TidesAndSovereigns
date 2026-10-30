@@ -30,7 +30,7 @@ export function buildDeck(owner:0|1, definitionIds:string[]=STARTER_DECK_IDS): C
 
 function player(name:string, owner:0|1, deckIds:string[]): PlayerState {
   const deck=buildDeck(owner,deckIds)
-  return { name, deck:deck.slice(10), hand:deck.slice(0,10), discard:[], rows:{melee:[],ranged:[],siege:[]}, passed:false, roundWins:0 }
+  return { name, deck:deck.slice(10), hand:deck.slice(0,10), discard:[], rows:{melee:[],ranged:[],siege:[]}, horns:{melee:null,ranged:null,siege:null}, passed:false, roundWins:0 }
 }
 
 export function createGame(deck0:string[]=STARTER_DECK_IDS, deck1:string[]=STARTER_DECK_IDS, names:[string,string]=['Player 1','Player 2']): GameState {
@@ -142,7 +142,7 @@ function resolveScorch(state:GameState, player:0|1){
   state.message=`Scorch destroys ${doomed.length} unit${doomed.length===1?'':'s'} at ${max} strength.`
 }
 
-function playSpecial(state:GameState, player:0|1, card:CardInstance){
+function playSpecial(state:GameState, player:0|1, card:CardInstance, chosenRow?:Row){
   const d=def(card)
   switch(d.ability){
     case 'special_decoy': {
@@ -163,6 +163,20 @@ function playSpecial(state:GameState, player:0|1, card:CardInstance){
       state.weather[0].siege='rain'; state.weather[1].siege='rain'; discardSpecial(state,player,card); state.message='Torrential Rain covers both Siege rows.'; return true
     case 'special_scorch':
       discardSpecial(state,player,card); resolveScorch(state,player); return true
+    case 'special_clear_skies':
+      state.weather=[{melee:null,ranged:null,siege:null},{melee:null,ranged:null,siege:null}]
+      discardSpecial(state,player,card)
+      state.message='Clear Skies removes every active Weather effect.'
+      return true
+    case 'special_horn':
+      if(!chosenRow || state.players[player].horns[chosenRow]){
+        state.players[player].hand.push(card)
+        state.message=!chosenRow?'Choose a row for Commander’s Horn.':'That row already has a Commander’s Horn.'
+        return false
+      }
+      state.players[player].horns[chosenRow]=card
+      state.message=`Commander’s Horn doubles ${state.players[player].name}'s ${chosenRow} row.`
+      return true
     default:
       state.players[player].hand.push(card); return false
   }
@@ -175,7 +189,7 @@ export function playCard(input:GameState, player:0|1, uidToPlay:string, chosenRo
   const cardDef=def(card)
 
   if(isSpecial(cardDef)){
-    const accepted=playSpecial(state,player,card)
+    const accepted=playSpecial(state,player,card,chosenRow)
     if(accepted && !state.pendingDecoy) advanceTurnOrRound(state)
     return state
   }
@@ -283,6 +297,8 @@ function finishRound(state:GameState){
   for(const side of [0,1] as const) for(const row of ROWS){
     const cards=state.players[side].rows[row].splice(0)
     for(const c of cards) state.players[c.owner].discard.push(c)
+    const horn=state.players[side].horns[row]
+    if(horn){ state.players[horn.owner].discard.push(horn); state.players[side].horns[row]=null }
   }
   state.weather=[{melee:null,ranged:null,siege:null},{melee:null,ranged:null,siege:null}]
   const winner = state.players[0].roundWins>=2 ? 0 : state.players[1].roundWins>=2 ? 1 : null
@@ -299,7 +315,8 @@ function finishRound(state:GameState){
  * 2. Base setters such as Weather (affected non-Legendary base becomes 1).
  * 3. Base multipliers such as Bond.
  * 4. Additive buffs such as Morale Boost.
- * Legendary units ignore ordinary Weather and Morale effects. Explicit card text
+ * 5. Row multipliers such as Commander’s Horn.
+ * Legendary units ignore ordinary Weather, Morale and Commander’s Horn effects. Explicit card text
  * can supersede that protection (for example Dreadfist's Sunder).
  */
 export function cardPower(state:GameState, side:0|1, row:Row, card:CardInstance):number {
@@ -309,7 +326,9 @@ export function cardPower(state:GameState, side:0|1, row:Row, card:CardInstance)
   let base = state.weather[side][row] ? 1 : d.strength
   if(d.ability==='bond' && state.players[side].rows[row].some(c=>c.uid!==card.uid && c.definitionId===card.definitionId)) base*=2
   const moraleCount=state.players[side].rows[row].filter(c=>c.uid!==card.uid && !isSpecial(def(c)) && def(c).ability==='morale').length
-  return base + moraleCount
+  let power=base + moraleCount
+  if(state.players[side].horns[row]) power*=2
+  return power
 }
 
 export function rowScore(state:GameState, side:0|1, row:Row){ return state.players[side].rows[row].reduce((n,c)=>n+cardPower(state,side,row,c),0) }

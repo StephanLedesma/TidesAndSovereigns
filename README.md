@@ -48,3 +48,11 @@ Player collection, player deck and preferred opponent mode auto-save in browser 
 
 Card definitions are in `src/data/fractilian.ts`.
 AI and NPC deck generation are in `src/game/ai.ts`.
+
+## v0.10
+- Starter deck corrected: Karthos Vale removed and Malcom Graves added.
+- Added Clear Skies and Commander's Horn to the Special-card pool and starter deck (one copy each).
+- Clear Skies removes all Weather effects from both players.
+- Commander's Horn occupies a dedicated slot on one chosen row and doubles the final Strength of every non-Legendary unit in that row. One Horn maximum per row.
+- Strength resolution is now: printed Strength → Weather base setter → Bond → Morale → Commander's Horn ×2.
+- Horns remain in their row slot until the round ends, then go to their owner's discard pile.

@@ -9,11 +9,22 @@ import { CardView } from './components/CardView'
 import './styles.css'
 
 const order:Row[]=['melee','ranged','siege']
-const CAMPAIGN_SAVE_KEY='pirates-vs-titans-campaign-v3'
-const LEGACY_SAVE_KEYS=['pirates-vs-titans-campaign-v2','pirates-vs-titans-campaign-v1']
+const CAMPAIGN_SAVE_KEY='pirates-vs-titans-campaign-v4'
+const LEGACY_SAVE_KEYS=['pirates-vs-titans-campaign-v3','pirates-vs-titans-campaign-v2','pirates-vs-titans-campaign-v1']
 type DeckCounts=Record<string,number>
 type OpponentMode='computer'|'dm'
-interface CampaignSave { version:3; collection:DeckCounts; playerDeck:DeckCounts; opponentMode:OpponentMode }
+interface CampaignSave { version:4; collection:DeckCounts; playerDeck:DeckCounts; opponentMode:OpponentMode }
+
+const LEGACY_V09_STARTER_DECK_IDS:string[] = [
+  'poor-fucking-pirates','poor-fucking-pirates','poor-fucking-pirates',
+  'tidecutters','tidecutters','tidecutters',
+  'cabin-boys','cabin-boys','cabin-boys',
+  'boarding-gunners','boarding-gunners','boarding-gunners',
+  'blackwake-bosun','blackwake-deckhands','blackwake-deckhands',
+  'cutlass-corsair','tobias-fate','jasper','karthos-vale',
+  'wailing-hangman','eagle-of-the-sea','salt-widow',
+  'decoy','biting-frost','impenetrable-fog','torrential-rain','scorch'
+]
 
 function countsFromIds(ids:string[]):DeckCounts{
   const counts:DeckCounts={}
@@ -23,16 +34,18 @@ function countsFromIds(ids:string[]):DeckCounts{
 function idsFromCounts(counts:DeckCounts){
   return ALL_CARDS.flatMap(d=>Array.from({length:counts[d.id]??0},()=>d.id))
 }
+function countsEqual(a:DeckCounts,b:DeckCounts){
+  return ALL_CARDS.every(card=>(a[card.id]??0)===(b[card.id]??0))
+}
 function startingCollection():DeckCounts{
   // The party begins owning exactly the cards physically present in the starter deck.
   // Extra copies and every other card must be found during the D&D campaign.
   return countsFromIds(STARTER_DECK_IDS)
 }
 function isLegacyFullCollection(collection:DeckCounts){
-  // v0.8 accidentally granted the campaign every card at its maximum copy limit.
-  // Detect that exact legacy state so the v0.9 migration can cleanse it without
-  // deleting genuine campaign progress from a deliberately edited collection.
-  return ALL_CARDS.every(card=>(collection[card.id]??0)===(card.copies??1))
+  // v0.8 accidentally granted every then-existing card at its maximum copy limit.
+  // Newer v0.10 Specials did not exist in that save, so exclude them from this legacy fingerprint.
+  return ALL_CARDS.filter(card=>card.id!=='clear-skies'&&card.id!=='commanders-horn').every(card=>(collection[card.id]??0)===(card.copies??1))
 }
 function sanitizeCollection(raw:unknown):DeckCounts{
   const input=(raw&&typeof raw==='object'?raw:{}) as Record<string,unknown>
@@ -61,15 +74,19 @@ function normalizeCampaignSave(raw:unknown):CampaignSave|null{
   const parsedCollection=sanitizeCollection(data.collection)
   const importedVersion=Number(data.version??0)
   const shouldCleanseLegacy=importedVersion<3&&isLegacyFullCollection(parsedCollection)
-  const collection=shouldCleanseLegacy?defaultCollection:(Object.keys(parsedCollection).length?parsedCollection:defaultCollection)
+  let collection=shouldCleanseLegacy?defaultCollection:(Object.keys(parsedCollection).length?parsedCollection:defaultCollection)
+  // v0.10 corrects the starter set: Karthos was included by mistake. Malcolm replaces him,
+  // and the starter now includes one Clear Skies and one Commander's Horn.
+  if(importedVersion<4 && countsEqual(collection,countsFromIds(LEGACY_V09_STARTER_DECK_IDS))) collection=defaultCollection
   let rawDeck:DeckCounts={}
   if(data.playerDeck&&typeof data.playerDeck==='object') rawDeck=data.playerDeck as DeckCounts
   else if(Array.isArray(data.decks)&&data.decks[0]&&typeof data.decks[0]==='object') rawDeck=data.decks[0] as DeckCounts
   const starter=clampDeckToCollection(countsFromIds(STARTER_DECK_IDS),collection)
+  if(importedVersion<4 && countsEqual(rawDeck,countsFromIds(LEGACY_V09_STARTER_DECK_IDS))) rawDeck=countsFromIds(STARTER_DECK_IDS)
   let playerDeck=clampDeckToCollection(Object.keys(rawDeck).length?rawDeck:starter,collection)
   if(!deckStats(idsFromCounts(playerDeck)).valid) playerDeck=starter
   const opponentMode:OpponentMode=data.opponentMode==='dm'?'dm':'computer'
-  return {version:3,collection,playerDeck,opponentMode}
+  return {version:4,collection,playerDeck,opponentMode}
 }
 function loadCampaignSave():CampaignSave{
   const fallback=normalizeCampaignSave({collection:startingCollection(),playerDeck:countsFromIds(STARTER_DECK_IDS),opponentMode:'computer'})!
@@ -122,7 +139,7 @@ export default function App(){
 
   useEffect(()=>{ setMulliganSelection([]) },[state.mulliganPlayer])
   useEffect(()=>{
-    const save:CampaignSave={version:3,collection,playerDeck:deckCounts[0],opponentMode}
+    const save:CampaignSave={version:4,collection,playerDeck:deckCounts[0],opponentMode}
     try{window.localStorage.setItem(CAMPAIGN_SAVE_KEY,JSON.stringify(save))}catch{/* game still runs without browser storage */}
   },[collection,deckCounts,opponentMode])
   useEffect(()=>{
@@ -148,6 +165,7 @@ export default function App(){
   const inspectedIsMulligan = inspected && mulliganPlayer!==null && !(computerMode&&mulliganPlayer===1)
     ? state.players[mulliganPlayer].hand.some(card=>card.uid===inspected.uid)
     : false
+  const hornRowsAvailable:Row[] = inspectedDef?.ability==='special_horn' ? order.filter(row=>!state.players[current].horns[row]) : []
 
   const playInspected=(row?:Row)=>{
     if(!inspected || !inspectedIsPlayable) return
@@ -202,7 +220,7 @@ export default function App(){
   }
 
   const exportCampaign=()=>{
-    const payload:CampaignSave={version:3,collection,playerDeck:deckCounts[0],opponentMode}
+    const payload:CampaignSave={version:4,collection,playerDeck:deckCounts[0],opponentMode}
     const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'})
     const url=URL.createObjectURL(blob)
     const link=document.createElement('a')
@@ -383,7 +401,7 @@ export default function App(){
       <div className="mulligan-actions"><small>{mulliganSelection.length===0?'Keep your opening hand, or choose cards to redraw.':`These ${mulliganSelection.length} card${mulliganSelection.length===1?'':'s'} will be replaced.`}</small><button onClick={finishMulligan}>{mulliganSelection.length===0?'Keep hand':`Redraw ${mulliganSelection.length}`}</button></div>
     </div></div>}
 
-    {inspected&&inspectedDef&&<CardInspector card={inspected} definition={inspectedDef} onClose={()=>setInspected(null)} playable={!!inspectedIsPlayable} onPlay={playInspected} mulligan={!!inspectedIsMulligan} mulliganSelected={mulliganSelection.includes(inspected.uid)} onToggleMulligan={()=>toggleMulligan(inspected.uid)} decoyPlayable={inspectedDef.ability!=='special_decoy'||decoyCandidates(state,current).length>0}/>}
+    {inspected&&inspectedDef&&<CardInspector card={inspected} definition={inspectedDef} onClose={()=>setInspected(null)} playable={!!inspectedIsPlayable} onPlay={playInspected} mulligan={!!inspectedIsMulligan} mulliganSelected={mulliganSelection.includes(inspected.uid)} onToggleMulligan={()=>toggleMulligan(inspected.uid)} decoyPlayable={inspectedDef.ability!=='special_decoy'||decoyCandidates(state,current).length>0} hornRows={hornRowsAvailable}/>}
 
     {state.pendingDecoy&&!(computerMode&&state.pendingDecoy.player===1)&&<div className="modal-backdrop"><div className="modal"><h2>Decoy</h2><p>Choose one non-Legendary unit on your battlefield to return to your hand.</p><div className="medic-grid">{decoys.map(({card})=><CardView key={card.uid} card={card} onClick={()=>setState(s=>resolveDecoy(s,card.uid))}/>)}</div></div></div>}
     {state.pendingMedic&&!(computerMode&&state.pendingMedic.player===1)&&<div className="modal-backdrop"><div className="modal"><h2>Medic</h2><p>Play one non-unique unit from your discard pile.</p><div className="medic-grid">{candidates.map(c=><CardView key={c.uid} card={c} onClick={()=>setState(s=>resolveMedic(s,c.uid))}/>)}</div></div></div>}
@@ -404,11 +422,11 @@ function CollectionModal({collection,unlockQuery,message,onUnlockQuery,onUnlock,
   </div></div>
 }
 
-function CardInspector({card,definition,onClose,playable=false,onPlay,mulligan=false,mulliganSelected=false,onToggleMulligan,decoyPlayable=true}:{card:CardInstance;definition:CardDefinition;onClose:()=>void;playable?:boolean;onPlay?:(row?:Row)=>void;mulligan?:boolean;mulliganSelected?:boolean;onToggleMulligan?:()=>void;decoyPlayable?:boolean}){
+function CardInspector({card,definition,onClose,playable=false,onPlay,mulligan=false,mulliganSelected=false,onToggleMulligan,decoyPlayable=true,hornRows=[]}:{card:CardInstance;definition:CardDefinition;onClose:()=>void;playable?:boolean;onPlay?:(row?:Row)=>void;mulligan?:boolean;mulliganSelected?:boolean;onToggleMulligan?:()=>void;decoyPlayable?:boolean;hornRows?:Row[]}){
   return <div className="card-inspect-backdrop" onClick={onClose}><div className="card-inspect" onClick={(e:any)=>e.stopPropagation()}>
     <button className="inspect-close" onClick={onClose} aria-label="Close card"><X/></button>
     {definition.image?<img className={definition.id==='fractilian-sharpshooter'?'sharpshooter-image-fix':''} src={definition.image} alt={definition.name}/>:null}
-    <div className="inspect-caption"><strong>{definition.name}</strong><span>{cardLabel(definition)}</span>{definition.abilityText&&<p className="inspect-ability"><b>{definition.abilityTitle}</b>{definition.abilityText}</p>}{mulligan&&<div className="inspect-actions"><button className="mulligan-inspect-button" onClick={onToggleMulligan}>{mulliganSelected?'Remove from redraw':'Select for redraw'}</button></div>}{playable&&<div className="inspect-actions"><b>Play this card</b><div className="inspect-row-buttons">{definition.kind==='special'?<button disabled={!decoyPlayable} onClick={()=>onPlay?.()}>{decoyPlayable?'Play special':'No valid Decoy target'}</button>:definition.rows.map(row=><button key={row} onClick={()=>onPlay?.(row)}>Play {row}</button>)}</div></div>}{!playable&&!mulligan&&<small>Card inspection.</small>}<small>Click outside or press Esc to close.</small></div>
+    <div className="inspect-caption"><strong>{definition.name}</strong><span>{cardLabel(definition)}</span>{definition.abilityText&&<p className="inspect-ability"><b>{definition.abilityTitle}</b>{definition.abilityText}</p>}{mulligan&&<div className="inspect-actions"><button className="mulligan-inspect-button" onClick={onToggleMulligan}>{mulliganSelected?'Remove from redraw':'Select for redraw'}</button></div>}{playable&&<div className="inspect-actions"><b>Play this card</b><div className="inspect-row-buttons">{definition.ability==='special_horn'?(hornRows.length?hornRows.map(row=><button key={row} onClick={()=>onPlay?.(row)}>Horn {row}</button>):<button disabled>No empty Horn slot</button>):definition.kind==='special'?<button disabled={!decoyPlayable} onClick={()=>onPlay?.()}>{decoyPlayable?'Play special':'No valid Decoy target'}</button>:definition.rows.map(row=><button key={row} onClick={()=>onPlay?.(row)}>Play {row}</button>)}</div></div>}{!playable&&!mulligan&&<small>Card inspection.</small>}<small>Click outside or press Esc to close.</small></div>
   </div></div>
 }
 
@@ -419,11 +437,13 @@ function RulesModal({onClose}:{onClose:()=>void}){
     <li>Player 2 is always an NPC seat. Its deck is randomly rebuilt for every match and obeys the 22-unit minimum and 10-Special maximum. NPCs may use every non-Legendary card in the database regardless of the party collection.</li>
     <li>NPC Legendary cards are disabled by default. During match setup, the DM may explicitly allow any Legendary cards that this particular opponent should have access to.</li>
     <li>Computer mode plays the NPC automatically. Dungeon Master mode gives you manual control of that same randomized NPC deck.</li>
-    <li>Special cards are Decoy, Biting Frost, Impenetrable Fog, Torrential Rain and Scorch.</li>
+    <li>Special cards are Decoy, Biting Frost, Impenetrable Fog, Torrential Rain, Scorch, Clear Skies and Commander’s Horn.</li>
+    <li><b>Clear Skies:</b> removes every active Weather effect from both sides.</li>
+    <li><b>Commander’s Horn:</b> choose one of your rows and place the Horn in its dedicated slot. Only one Horn may occupy a row. It doubles the final Strength of every non-Legendary unit in that row until the round ends.</li>
     <li>Normal Weather Specials affect both matching rows. Cassiopeia, Orrick and Yara only affect the enemy row because their card text specifically says so.</li>
     <li>Decoy swaps with one of your non-Legendary units and returns that unit to your hand.</li>
     <li>Scorch destroys the strongest non-Legendary unit or units currently on the battlefield.</li>
     <li>A coin toss determines who takes the first turn. The toss winner also resolves their opening redraw first.</li><li>Each player begins with 10 cards and may redraw up to 2 before round one begins.</li><li>Highest total power wins a round; first to 2 rounds wins.</li><li>Play one card per turn or pass. Once you pass, you take no more turns that round.</li><li>Spy cards are placed on the opponent's row and draw 2 cards for their owner.</li>
-    <li><b>Strength precedence:</b> printed strength → Weather sets base strength → Bond multiplies that base → Morale adds afterward.</li><li>Fog affects Ranged, Rain affects Siege, Frost affects Melee. Weather sets the base strength of affected non-Legendary units to 1; it does not erase later buffs.</li><li>Example: a normal unit under Frost has base 1. Three Cabin Boys give that unit +3 Morale, so it finishes at 4 strength. Each Cabin Boy is 3 because it only receives the other two boosts.</li><li>Legendary black cards ignore ordinary Weather and Morale. Specific card text beats general rules: Dreadfist's Sunder destroys Legendary units and leaves Dreadfist himself standing.</li>
+    <li><b>Strength precedence:</b> printed strength → Weather sets base strength → Bond multiplies that base → Morale adds afterward → Commander’s Horn doubles the result.</li><li>Fog affects Ranged, Rain affects Siege, Frost affects Melee. Weather sets the base strength of affected non-Legendary units to 1; it does not erase later buffs.</li><li>Example: a normal unit under Frost has base 1. Three Cabin Boys give that unit +3 Morale, so it finishes at 4 strength. Each Cabin Boy is 3 because it only receives the other two boosts.</li><li>Legendary black cards ignore ordinary Weather, Morale and Commander’s Horn. Specific card text beats general rules: Dreadfist's Sunder destroys Legendary units and leaves Dreadfist himself standing.</li>
   </ul><p className="note">Unit and Special card definitions live in <code>src/data/fractilian.ts</code>.</p></div></div>
 }

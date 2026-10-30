@@ -47,3 +47,10 @@ The packaged source history did not contain the Sharpshooter PNG itself; the ori
 - Starter collection resolves to exactly 27 physical cards across 18 card types, including only one Cutlass Corsair and one copy of each starter Special.
 
 A full Vite build was not available in this environment because npm dependencies could not be downloaded during packaging; run `npm install` then `npm run dev` locally as usual.
+
+## v0.10 implementation notes
+- Campaign save schema advanced to v4. An untouched v0.9 starter save migrates to the corrected starter automatically.
+- `PlayerState.horns` stores one optional Special card for each row (`melee`, `ranged`, `siege`).
+- `special_clear_skies` clears `GameState.weather` only; it never removes Horns.
+- `special_horn` requires a row target and cannot be played into a row whose Horn slot is already occupied.
+- NPC random deck generation automatically includes both new Specials because they are non-Legendary Special cards.
